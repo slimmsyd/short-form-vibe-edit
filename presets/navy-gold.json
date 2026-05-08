@@ -1,0 +1,10 @@
+{
+  "$schema": "preset",
+  "name": "navy-gold",
+  "description": "Editorial navy + warm gold. Sydney's default. Confident, financial-adjacent, premium feel.",
+  "bg": "#0A0A0A",
+  "accent": "#F8E16C",
+  "navy": "#0F1A2E",
+  "fontFamily": "InterTight",
+  "captionFontWeight": "800"
+}

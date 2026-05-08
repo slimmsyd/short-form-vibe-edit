@@ -1,0 +1,78 @@
+{
+  "$comment": "Motion library catalog. Read this when matching a scene's spoken words to a motion template. Each entry has a name (used in scenes.json motion field), a summary, the keywords/themes that should trigger it, and any optional props the agent can pass to customize.",
+  "templates": [
+    {
+      "name": "ChartConvergence",
+      "summary": "Two opposing market bar strips slide in from L/R, meet at center, gold arrow rises out of the convergence.",
+      "use_when": "transcript mentions matching, arbitrage, opportunity, opposing forces, convergence, two sides meeting, balance, equilibrium, deal closing",
+      "props_optional": [
+        { "name": "leftBars", "type": "number[]", "description": "8 normalized heights (0..1) for the left chart" },
+        { "name": "rightBars", "type": "number[]", "description": "8 normalized heights (0..1) for the right chart" }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "Timeline",
+      "summary": "Horizontal track draws across, milestone markers pop in staggered with year labels.",
+      "use_when": "transcript mentions experience, history, journey, evolution, year-by-year, track record, growth over time, milestones, before/after sequencing",
+      "props_optional": [
+        {
+          "name": "milestones",
+          "type": "Array<{ x: number, popFrame: number, label: string, sub?: string }>",
+          "description": "Override the default 4 milestones. x is in 1080-wide coords, popFrame is when it appears."
+        }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "ProblemSolution",
+      "summary": "Tangled scribble on left fades, clean target+arrow springs in on right, gold arrow bridges them.",
+      "use_when": "transcript mentions defining a problem, finding a solution, before/after, chaos to clarity, fix, breakthrough, solve, untangle, debug, refactor, simplify",
+      "props_optional": [
+        { "name": "problemLabel", "type": "string", "description": "Override 'PROBLEM' label" },
+        { "name": "solutionLabel", "type": "string", "description": "Override 'SOLUTION' label" }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "BrowserBuilds",
+      "summary": "Browser window chrome assembles, then UI components fade in (header, sidebar, content card with chart, action button).",
+      "use_when": "transcript mentions building a web app, shipping a product, deploying, dashboard, software, web interface, prototype, MVP, launching",
+      "props_optional": [
+        { "name": "buttonLabel", "type": "string", "description": "Override 'Deploy' on the button" }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "ClockProgress",
+      "summary": "Analog clock face with sweeping second hand, progress bar at 95%, pulsing notification dot. Calm pacing.",
+      "use_when": "transcript mentions waiting, paused, anticipation, time passing, almost done, pending, in-progress, queued, deliberate, slow, hold",
+      "props_optional": [
+        { "name": "caption", "type": "string", "description": "Caption under the bar (default 'PENDING REVIEW')" },
+        { "name": "finalPercent", "type": "number", "description": "Where progress freezes (0..1, default 0.95)" }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "TierStack",
+      "summary": "Stacked chat-bubble cards at ascending Y positions, each more elaborate than the one below (1 line → 3 lines → with chart → with code).",
+      "use_when": "transcript mentions scope, capability, tiers, levels, scale, altitude, what's possible, sophistication, depth, ladder, range of options",
+      "props_optional": [
+        { "name": "scopeLabel", "type": "string", "description": "Override the right-edge label (default '↑ scope')" },
+        { "name": "codeSnippet", "type": "string", "description": "Override the line of code in the top bubble" }
+      ],
+      "duration_ideal_ms": 4000
+    }
+  ],
+  "matching_rules": {
+    "$comment": "How the agent should pick a template per scene",
+    "process": [
+      "Read the scene's `words` field — what's actually said in this 4-second window",
+      "Look for keyword overlap with each template's `use_when` description",
+      "If multiple templates match, pick the one with the strongest/most specific match",
+      "If NOTHING matches well (score is low across the board), write a custom in src/broll-custom/ instead — do not force-fit a template",
+      "Write the chosen template name into the scene's `motion` field, e.g. `\"motion\": \"Timeline\"`",
+      "For customs, use the prefix `custom:` followed by the component name, e.g. `\"motion\": \"custom:Scene07_OurStartup\"`"
+    ]
+  }
+}

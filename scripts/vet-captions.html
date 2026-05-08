@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Vet captions — {{PROJECT_NAME}}</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --line: #2a2f3a;
+    --accent: #f8e16c;
+    --text: #e8eaef;
+    --muted: #8a91a3;
+    --red: #e04545;
+    --amber: #f8a13a;
+    --green: #3dd68c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.45 system-ui, -apple-system, "SF Pro Display", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  audio {
+    width: 100%;
+    max-width: 600px;
+    height: 36px;
+    filter: hue-rotate(40deg) saturate(0.4);
+  }
+  button {
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    border-radius: 8px;
+    padding: 8px 14px;
+    background: var(--line);
+    color: var(--text);
+  }
+  button:hover { background: #353a47; }
+  button.primary {
+    background: var(--accent);
+    color: #0a0a0a;
+    font-weight: 800;
+  }
+  button.primary:hover { filter: brightness(1.06); }
+  .replace-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .replace-bar input {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font: inherit;
+  }
+  .replace-bar .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+  }
+  th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 10px 8px;
+    background: var(--panel);
+    position: sticky;
+    top: 87px;
+    z-index: 5;
+    border-bottom: 1px solid var(--line);
+  }
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(42,47,58,0.5);
+    vertical-align: middle;
+  }
+  tr.changed { background: rgba(248,225,108,0.04); }
+  tr:hover { background: rgba(255,255,255,0.02); }
+  td.ts { color: var(--muted); font-variant-numeric: tabular-nums; cursor: pointer; user-select: none; }
+  td.ts:hover { color: var(--accent); }
+  td.orig { color: var(--muted); font-family: ui-monospace, monospace; font-size: 13px; }
+  td.edit input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font: inherit;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+  td.edit input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(248,225,108,0.05);
+  }
+  td.edit input.diff {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.red { background: rgba(224,69,69,0.18); color: var(--red); }
+  .pill.amber { background: rgba(248,161,58,0.16); color: var(--amber); }
+  .pill.green { background: rgba(61,214,140,0.14); color: var(--green); }
+  td.play button { padding: 4px 8px; font-size: 12px; }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #0a0a0a; font-weight: 700;
+    padding: 12px 20px; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    opacity: 0; transition: opacity 200ms;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Vet captions</h1>
+  <span class="meta" id="meta">Loading…</span>
+  <span class="spacer"></span>
+  <audio id="audio" controls preload="metadata" src="/audio.wav"></audio>
+  <button class="primary" id="save-close">Save &amp; Close</button>
+</header>
+
+<div class="replace-bar">
+  <span class="label">Replace</span>
+  <input id="find" placeholder="find" />
+  <span class="label">→</span>
+  <input id="replace" placeholder="with" />
+  <button id="replaceAll">Replace All</button>
+  <span class="spacer"></span>
+  <span class="label" id="stats"></span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 80px">Time</th>
+      <th style="width: 200px">Original (whisper)</th>
+      <th>Edited</th>
+      <th style="width: 80px">Conf</th>
+      <th style="width: 60px">Play</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+const audio = document.getElementById("audio");
+const rowsEl = document.getElementById("rows");
+const meta = document.getElementById("meta");
+const stats = document.getElementById("stats");
+const toast = document.getElementById("toast");
+
+let captions = [];
+
+async function load() {
+  const r = await fetch("/captions.json");
+  captions = await r.json();
+  meta.textContent = captions.length + " words · " + (audio.duration ? audio.duration.toFixed(1) : "?") + "s audio";
+  render();
+}
+
+audio.addEventListener("loadedmetadata", () => {
+  meta.textContent = captions.length + " words · " + audio.duration.toFixed(1) + "s audio";
+});
+
+function render() {
+  rowsEl.innerHTML = "";
+  let changedCount = 0;
+  for (let i = 0; i < captions.length; i++) {
+    const c = captions[i];
+    const orig = (c.text || "").trim();
+    const edited = orig; // initial value = original
+    const tr = document.createElement("tr");
+    tr.dataset.idx = i;
+
+    const tsCell = document.createElement("td");
+    tsCell.className = "ts";
+    tsCell.textContent = (c.startMs / 1000).toFixed(2) + "s";
+    tsCell.title = "Click to scrub audio";
+    tsCell.onclick = () => { audio.currentTime = c.startMs / 1000; audio.play(); };
+    tr.appendChild(tsCell);
+
+    const origCell = document.createElement("td");
+    origCell.className = "orig";
+    origCell.textContent = orig || "(empty)";
+    tr.appendChild(origCell);
+
+    const editCell = document.createElement("td");
+    editCell.className = "edit";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = edited;
+    input.dataset.orig = orig;
+    input.addEventListener("input", () => updateRow(tr, input));
+    editCell.appendChild(input);
+    tr.appendChild(editCell);
+
+    const confCell = document.createElement("td");
+    const conf = c.confidence;
+    if (conf == null) {
+      confCell.innerHTML = "<span class='pill amber'>—</span>";
+    } else {
+      const pct = Math.round(conf * 100);
+      const cls = conf < 0.5 ? "red" : conf < 0.85 ? "amber" : "green";
+      confCell.innerHTML = `<span class='pill ${cls}'>${pct}%</span>`;
+    }
+    tr.appendChild(confCell);
+
+    const playCell = document.createElement("td");
+    playCell.className = "play";
+    const playBtn = document.createElement("button");
+    playBtn.textContent = "▶";
+    playBtn.title = "Play this word's window";
+    playBtn.onclick = () => playWindow(c);
+    playCell.appendChild(playBtn);
+    tr.appendChild(playCell);
+
+    rowsEl.appendChild(tr);
+  }
+  updateStats();
+}
+
+function updateRow(tr, input) {
+  const isDiff = input.value.trim() !== input.dataset.orig.trim();
+  input.classList.toggle("diff", isDiff);
+  tr.classList.toggle("changed", isDiff);
+  updateStats();
+}
+
+function updateStats() {
+  const inputs = rowsEl.querySelectorAll("input");
+  let n = 0;
+  inputs.forEach(i => { if (i.classList.contains("diff")) n++; });
+  stats.textContent = n + " edited";
+}
+
+function playWindow(c) {
+  audio.currentTime = c.startMs / 1000;
+  audio.play();
+  // pause after the word's window + 200ms tail
+  const stopAt = (c.endMs / 1000) + 0.2;
+  const tick = () => {
+    if (audio.currentTime >= stopAt) {
+      audio.pause();
+      audio.removeEventListener("timeupdate", tick);
+    }
+  };
+  audio.addEventListener("timeupdate", tick);
+}
+
+document.getElementById("replaceAll").onclick = () => {
+  const findV = document.getElementById("find").value;
+  const repV = document.getElementById("replace").value;
+  if (!findV) return;
+  const re = new RegExp(findV.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  let n = 0;
+  rowsEl.querySelectorAll("input").forEach((inp) => {
+    const before = inp.value;
+    const after = before.replace(re, repV);
+    if (before !== after) {
+      inp.value = after;
+      const tr = inp.closest("tr");
+      updateRow(tr, inp);
+      n++;
+    }
+  });
+  showToast(`Replaced in ${n} row(s)`);
+};
+
+document.getElementById("save-close").onclick = async () => {
+  const inputs = rowsEl.querySelectorAll("input");
+  const updated = captions.map((c, i) => {
+    // Preserve leading whitespace if the original had it (whisper word.text often starts with " ")
+    const origRaw = c.text || "";
+    const newRaw = inputs[i].value;
+    // If original started with space and edited doesn't, prepend space
+    const text = origRaw.startsWith(" ") && !newRaw.startsWith(" ") ? " " + newRaw : newRaw;
+    return { text };
+  });
+  const r = await fetch("/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updated),
+  });
+  if (r.ok) {
+    showToast("Saved! Closing…");
+    await fetch("/shutdown", { method: "POST" });
+    setTimeout(() => window.close(), 600);
+  } else {
+    const err = await r.text();
+    showToast("Error: " + err);
+  }
+};
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
+load();
+</script>
+</body>
+</html>

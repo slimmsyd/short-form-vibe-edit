@@ -1,0 +1,10 @@
+{
+  "$schema": "preset",
+  "name": "high-contrast",
+  "description": "Pure black + electric green accent. Maximum legibility. Dev-focused / hacker aesthetic.",
+  "bg": "#000000",
+  "accent": "#00FF88",
+  "navy": "#0A0A0A",
+  "fontFamily": "JetBrainsMono",
+  "captionFontWeight": "800"
+}

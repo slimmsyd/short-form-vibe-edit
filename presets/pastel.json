@@ -1,0 +1,10 @@
+{
+  "$schema": "preset",
+  "name": "pastel",
+  "description": "Soft cream + dusty pink accent over deep blue. Warm, lifestyle / wellness feel.",
+  "bg": "#1A1623",
+  "accent": "#F8B4B4",
+  "navy": "#2D2440",
+  "fontFamily": "BricolageGrotesque",
+  "captionFontWeight": "800"
+}

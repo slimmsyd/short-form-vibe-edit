@@ -62,6 +62,49 @@
         { "name": "codeSnippet", "type": "string", "description": "Override the line of code in the top bubble" }
       ],
       "duration_ideal_ms": 4000
+    },
+    {
+      "name": "KineticType",
+      "summary": "Full-bleed kinetic typography. Words pop in stagger with overshoot rotation, last word colored in accent. No surrounding card. Different layout family from the cards-and-charts entries.",
+      "use_when": "transcript hits an emphatic, declarative line: payoff, mantra, punchline, 'the truth is...', 'saves you mad time', 'don't sleep on this', single bold statement",
+      "props_optional": [
+        { "name": "text", "type": "string", "description": "The line to render. Will be split on whitespace and rendered word-per-line. ALL CAPS reads best." },
+        { "name": "bg", "type": "'navy' | 'paper' | 'none'", "description": "Background. Default 'navy'. 'paper' for instructional tone, 'none' to layer over previous content." },
+        { "name": "highlightIndex", "type": "number", "description": "Which word index gets accent color. Defaults to last word." }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "TerminalCommand",
+      "summary": "Dark terminal-style background with scanlines. Types a command char-by-char after a `$` prompt, then streams 2-4 output lines below with a blinking cursor. Different background and font from every other library entry.",
+      "use_when": "transcript mentions code, commands, technical execution, 'run this', 'call the function', CLI flavor, anything that benefits from a monospace/code aesthetic",
+      "props_optional": [
+        { "name": "command", "type": "string", "description": "Command to type out. Default \"claude.skill('edit')\"" },
+        { "name": "output", "type": "string[]", "description": "Output lines streamed under the command. Lines starting with ✓ render green, ✗ red, → accent." }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "SplitWipe",
+      "summary": "True split-screen: muted maroon left half (failure) vs deep teal right half (success), with halves sliding in from opposite edges, then a glowing accent divider, then big ✕/✓ glyphs and labels. Replaces ProblemSolution when the contrast needs to be sharper.",
+      "use_when": "transcript hits before/after, vs, then/now, A/B comparison, two paths, 'here's what happens without it', 'here's what happens with it'. Stronger than ProblemSolution when the user wants a hard visual divider.",
+      "props_optional": [
+        { "name": "leftLabel", "type": "string", "description": "Default 'BEFORE'" },
+        { "name": "rightLabel", "type": "string", "description": "Default 'AFTER'" },
+        { "name": "leftGlyph", "type": "string", "description": "Big symbol on left. Default '✕'" },
+        { "name": "rightGlyph", "type": "string", "description": "Big symbol on right. Default '✓'" }
+      ],
+      "duration_ideal_ms": 4000
+    },
+    {
+      "name": "NetworkNodes",
+      "summary": "Blueprint-grid background with 7 asymmetrically scattered nodes that drift via deterministic noise. Edges draw on between them via stroke-dashoffset. One 'hot' node pulses in accent. Asymmetric layout — label is top-left, badge is bottom-right.",
+      "use_when": "transcript mentions connections, ecosystem, network, 'everyone is using it', users, 'all of this is connected', graph, web of relationships, multi-party",
+      "props_optional": [
+        { "name": "label", "type": "string", "description": "Top-left big label. Default 'CONNECTED'" },
+        { "name": "caption", "type": "string", "description": "Sub-caption (monospace). Default 'everyone is using it'" }
+      ],
+      "duration_ideal_ms": 4000
     }
   ],
   "matching_rules": {

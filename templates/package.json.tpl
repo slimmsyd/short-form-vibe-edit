@@ -14,6 +14,11 @@
     "@remotion/renderer": "^4.0.0",
     "@remotion/captions": "^4.0.0",
     "@remotion/google-fonts": "^4.0.0",
+    "@remotion/shapes": "^4.0.0",
+    "@remotion/transitions": "^4.0.0",
+    "@remotion/paths": "^4.0.0",
+    "@remotion/animation-utils": "^4.0.0",
+    "@remotion/noise": "^4.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   }

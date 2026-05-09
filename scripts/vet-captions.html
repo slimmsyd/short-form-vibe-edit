@@ -137,6 +137,70 @@
     opacity: 0; transition: opacity 200ms;
   }
   .toast.show { opacity: 1; }
+  .enhance {
+    display: none;               /* shown only if /enhancement-status reports available */
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .enhance.show { display: inline-flex; }
+  .enhance .lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .enhance input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 130px;
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    outline: none;
+  }
+  .enhance input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 0 2px rgba(248,225,108,0.2);
+  }
+  .enhance input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+  .enhance .val {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    width: 30px;
+    text-align: right;
+    color: var(--text);
+  }
+  .enhance .pill {
+    min-width: 44px;
+    text-align: center;
+  }
+  .enhance.busy .val::after {
+    content: "…";
+    color: var(--accent);
+  }
+  .enhance-missing {
+    display: none;
+    color: var(--muted);
+    font-size: 12px;
+    font-style: italic;
+  }
+  .enhance-missing.show { display: inline; }
 </style>
 </head>
 <body>
@@ -146,6 +210,13 @@
   <span class="meta" id="meta">Loading…</span>
   <span class="spacer"></span>
   <audio id="audio" controls preload="metadata" src="/audio.wav"></audio>
+  <div class="enhance" id="enhance">
+    <span class="lbl">Voice</span>
+    <input type="range" id="enhance-slider" min="0" max="100" step="1" value="0" />
+    <span class="val" id="enhance-val">0</span>
+    <span class="pill amber" id="enhance-pill">Off</span>
+  </div>
+  <span class="enhance-missing" id="enhance-missing"></span>
   <button class="primary" id="save-close">Save &amp; Close</button>
 </header>
 
@@ -328,6 +399,79 @@ function showToast(msg) {
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 1800);
 }
+
+// ---- Voice enhancement slider (preview only, swaps audio.src) -------------
+(async () => {
+  const wrap = document.getElementById("enhance");
+  const missing = document.getElementById("enhance-missing");
+  const slider = document.getElementById("enhance-slider");
+  const valEl = document.getElementById("enhance-val");
+  const pill = document.getElementById("enhance-pill");
+
+  let status;
+  try {
+    status = await (await fetch("/enhancement-status")).json();
+  } catch {
+    status = { available: false, reason: "status fetch failed" };
+  }
+  if (!status.available) {
+    missing.textContent = "Voice enhance off — " + (status.reason || "unavailable");
+    missing.classList.add("show");
+    return;
+  }
+  wrap.classList.add("show");
+
+  function classify(n) {
+    if (n === 0) return ["amber", "Off"];
+    if (n < 35) return ["green", "Light"];
+    if (n < 75) return ["green", "Mid"];
+    return ["green", "Strong"];
+  }
+
+  let debounceTimer = null;
+  let lastApplied = 0;
+
+  async function applyMix(mix) {
+    if (mix === lastApplied) return;
+    lastApplied = mix;
+    const wasPlaying = !audio.paused && !audio.ended;
+    const t = audio.currentTime;
+    wrap.classList.add("busy");
+    // Swap source. ?v= cache-buster so the browser actually re-fetches when
+    // moving 0→0 isn't possible, but moving e.g. 50→50 across a session reset
+    // still gets a fresh stream.
+    const url = mix === 0
+      ? "/audio.wav?v=" + Date.now()
+      : "/audio-enhanced.wav?mix=" + mix + "&v=" + Date.now();
+    const onLoaded = () => {
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("error", onErr);
+      try { audio.currentTime = t; } catch {}
+      if (wasPlaying) audio.play().catch(() => {});
+      wrap.classList.remove("busy");
+    };
+    const onErr = () => {
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("error", onErr);
+      wrap.classList.remove("busy");
+      showToast("Enhancement failed — check terminal");
+    };
+    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.addEventListener("error", onErr);
+    audio.src = url;
+    audio.load();
+  }
+
+  slider.addEventListener("input", () => {
+    const v = parseInt(slider.value, 10) | 0;
+    valEl.textContent = String(v);
+    const [cls, label] = classify(v);
+    pill.className = "pill " + cls;
+    pill.textContent = label;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => applyMix(v), 250);
+  });
+})();
 
 load();
 </script>

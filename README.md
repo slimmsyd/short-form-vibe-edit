@@ -34,7 +34,7 @@ When invoked through Claude Code (the skill is auto-loaded), Claude orchestrates
 
 ## Library of motion graphics
 
-Six built-in templates that cover most common short-form b-roll needs:
+Ten built-in templates that cover most common short-form b-roll needs:
 
 - **ChartConvergence** — opportunity / arbitrage / matching
 - **Timeline** — experience / history / journey
@@ -42,8 +42,22 @@ Six built-in templates that cover most common short-form b-roll needs:
 - **BrowserBuilds** — building software / shipping product
 - **ClockProgress** — waiting / pending / anticipation
 - **TierStack** — scope / capability tiers / scale
+- **KineticType** — emphatic declarative lines / mantras / punchlines
+- **TerminalCommand** — code, CLI flavor, command + streamed output
+- **SplitWipe** — sharper before/after with hard visual divider
+- **NetworkNodes** — connections / ecosystem / "everyone is using it"
 
 When none fit, write a custom in your project's `src/broll-custom/`. See `docs/custom-scenes.md`.
+
+## Caption vetting UI (with voice enhancement)
+
+Whisper makes regular transcription errors. Run `scripts/vet-captions.mjs <workspace>` to spin up a local browser UI on `localhost:7321` for fixing them:
+
+- Per-word editable text with confidence pills (red/amber/green)
+- ▶ button to replay each word's audio window
+- Find/Replace bar for bulk fixes ("Asian" → "AI")
+- **Voice enhancement slider (RNNoise)** — wet/dry-mix the audio through ffmpeg's `arnndn` filter for cleaner verification on noisy clips. **Preview only** — does not modify `audio.wav`, `public/source.mp4`, or the rendered output. Auto-hides if `assets/rnnoise/mp.rnnn` is missing.
+- "Save & Close" writes corrected captions back (timestamps preserved; `.bak` written on first save)
 
 ## Brand presets
 

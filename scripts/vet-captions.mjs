@@ -5,11 +5,13 @@
 // Usage: node vet-captions.mjs <workspace>
 //
 // Routes:
-//   GET  /              → vet-captions.html
-//   GET  /captions.json → current captions
-//   GET  /audio.wav     → audio for playback
-//   POST /save          → write edited captions back
-//   POST /shutdown      → exit server (called on Save & Close)
+//   GET  /                       → vet-captions.html
+//   GET  /captions.json          → current captions
+//   GET  /audio.wav              → original audio for playback
+//   GET  /audio-enhanced.wav?mix=N → preview audio with RNNoise wet/dry mix
+//   GET  /enhancement-status     → { available, reason? }
+//   POST /save                   → write edited captions back
+//   POST /shutdown               → exit server (called on Save & Close)
 
 import fs from "node:fs";
 import path from "node:path";
@@ -28,11 +30,13 @@ process.on("uncaughtException", (err) => {
 
 const SCRIPT_DIR = path.dirname(new URL(import.meta.url).pathname);
 const HTML_PATH = path.join(SCRIPT_DIR, "vet-captions.html");
+const RNNOISE_MODEL = path.resolve(SCRIPT_DIR, "..", "assets", "rnnoise", "mp.rnnn");
 
 const workspace = path.resolve(process.argv[2] ?? ".");
 const captionsPath = path.join(workspace, "captions.json");
 const audioPath = path.join(workspace, "audio.wav");
 const projectPath = path.join(workspace, "project.json");
+const enhanceCacheDir = path.join(workspace, ".cache", "audio-enhanced");
 
 function fail(msg) {
   console.error(msg);
@@ -47,6 +51,106 @@ if (!fs.existsSync(audioPath))
 const projectName = fs.existsSync(projectPath)
   ? JSON.parse(fs.readFileSync(projectPath, "utf8")).projectName ?? "workspace"
   : path.basename(workspace);
+
+// Voice-enhancement (preview only) — bundled RNNoise model.
+const enhancementAvailable = fs.existsSync(RNNOISE_MODEL);
+const enhancementReason = enhancementAvailable
+  ? null
+  : `RNNoise model not found at ${RNNOISE_MODEL}`;
+
+// Reset preview cache on every server start: audio.wav may have been
+// re-transcribed since last run, so old cached mixes would be stale.
+try {
+  fs.rmSync(enhanceCacheDir, { recursive: true, force: true });
+} catch {}
+if (enhancementAvailable) {
+  fs.mkdirSync(enhanceCacheDir, { recursive: true });
+}
+
+// One in-flight ffmpeg job per mix level, so a fast slider drag doesn't
+// race the same target file from two requests.
+const enhanceLocks = new Map(); // mix(int) -> Promise<string cachedPath>
+
+function buildEnhancedWav(mix) {
+  // mix: 0..100 — 0 = bypass (returns audioPath), 100 = pure denoised.
+  if (mix === 0) return Promise.resolve(audioPath);
+  const cached = path.join(enhanceCacheDir, `mix-${mix}.wav`);
+  if (fs.existsSync(cached)) return Promise.resolve(cached);
+  if (enhanceLocks.has(mix)) return enhanceLocks.get(mix);
+
+  const dry = ((100 - mix) / 100).toFixed(4);
+  const wet = (mix / 100).toFixed(4);
+  const filter =
+    `[0:a]asplit=2[dry][wet1];` +
+    `[wet1]arnndn=m=${RNNOISE_MODEL}[wet];` +
+    `[dry][wet]amix=inputs=2:weights=${dry} ${wet}:normalize=0[out]`;
+
+  const job = new Promise((resolve, reject) => {
+    const args = [
+      "-y", "-loglevel", "error",
+      "-i", audioPath,
+      "-filter_complex", filter,
+      "-map", "[out]",
+      "-ar", "16000", "-ac", "1",
+      "-c:a", "pcm_s16le",
+      cached,
+    ];
+    const t0 = Date.now();
+    const p = spawn("ffmpeg", args, { stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+    p.stderr.on("data", (c) => { stderr += c.toString(); });
+    p.on("error", reject);
+    p.on("close", (code) => {
+      if (code === 0) {
+        console.log(`[enhance] mix=${mix} → ${path.relative(workspace, cached)} (${Date.now() - t0}ms)`);
+        resolve(cached);
+      } else {
+        try { fs.rmSync(cached, { force: true }); } catch {}
+        reject(new Error(`ffmpeg exited ${code}: ${stderr.trim()}`));
+      }
+    });
+  }).finally(() => enhanceLocks.delete(mix));
+
+  enhanceLocks.set(mix, job);
+  return job;
+}
+
+function streamWav(req, res, filePath) {
+  // Shared range-aware streamer used by both /audio.wav and /audio-enhanced.wav.
+  const stat = fs.statSync(filePath);
+  const range = req.headers.range;
+  let stream, status, headers;
+  if (range) {
+    const m = /bytes=(\d+)-(\d*)/.exec(range);
+    const start = m ? parseInt(m[1], 10) : 0;
+    const end = m && m[2] ? parseInt(m[2], 10) : stat.size - 1;
+    status = 206;
+    headers = {
+      "Content-Type": "audio/wav",
+      "Accept-Ranges": "bytes",
+      "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+      "Content-Length": end - start + 1,
+      "Cache-Control": "no-store",
+    };
+    stream = fs.createReadStream(filePath, { start, end });
+  } else {
+    status = 200;
+    headers = {
+      "Content-Type": "audio/wav",
+      "Accept-Ranges": "bytes",
+      "Content-Length": stat.size,
+      "Cache-Control": "no-store",
+    };
+    stream = fs.createReadStream(filePath);
+  }
+  res.writeHead(status, headers);
+  stream.on("error", (e) => {
+    console.error("[audio stream error]", e.message);
+    res.destroy();
+  });
+  req.on("close", () => stream.destroy());
+  stream.pipe(res);
+}
 
 const PORTS = [7321, 7322, 7323, 7324, 7325];
 let server = null;
@@ -101,38 +205,29 @@ const app = async (req, res) => {
       return send(res, 200, buf, { "Content-Type": "application/json" });
     }
     if (req.method === "GET" && p === "/audio.wav") {
-      // Stream with range support so the <audio> element can seek smoothly.
-      const stat = fs.statSync(audioPath);
-      const range = req.headers.range;
-      let stream, status, headers;
-      if (range) {
-        const m = /bytes=(\d+)-(\d*)/.exec(range);
-        const start = m ? parseInt(m[1], 10) : 0;
-        const end = m && m[2] ? parseInt(m[2], 10) : stat.size - 1;
-        status = 206;
-        headers = {
-          "Content-Type": "audio/wav",
-          "Accept-Ranges": "bytes",
-          "Content-Range": `bytes ${start}-${end}/${stat.size}`,
-          "Content-Length": end - start + 1,
-        };
-        stream = fs.createReadStream(audioPath, { start, end });
-      } else {
-        status = 200;
-        headers = {
-          "Content-Type": "audio/wav",
-          "Accept-Ranges": "bytes",
-          "Content-Length": stat.size,
-        };
-        stream = fs.createReadStream(audioPath);
-      }
-      res.writeHead(status, headers);
-      stream.on("error", (e) => {
-        console.error("[audio stream error]", e.message);
-        res.destroy();
+      streamWav(req, res, audioPath);
+      return;
+    }
+    if (req.method === "GET" && p === "/enhancement-status") {
+      return send(res, 200, {
+        available: enhancementAvailable,
+        reason: enhancementReason,
       });
-      req.on("close", () => stream.destroy());
-      stream.pipe(res);
+    }
+    if (req.method === "GET" && p === "/audio-enhanced.wav") {
+      if (!enhancementAvailable)
+        return send(res, 503, { error: enhancementReason });
+      const raw = url.searchParams.get("mix");
+      let mix = parseInt(raw ?? "0", 10);
+      if (!Number.isFinite(mix)) mix = 0;
+      mix = Math.max(0, Math.min(100, Math.round(mix)));
+      try {
+        const filePath = await buildEnhancedWav(mix);
+        streamWav(req, res, filePath);
+      } catch (e) {
+        console.error("[enhance] failed:", e.message);
+        send(res, 500, { error: String(e.message || e) });
+      }
       return;
     }
     if (req.method === "POST" && p === "/save") {
@@ -198,6 +293,9 @@ async function tryListen(port) {
   console.log(`   captions:  ${captionsPath}`);
   console.log(`   backup will be written to ${captionsPath}.bak on first save`);
   console.log(`   idle timeout: 30 min`);
+  console.log(
+    `   voice enhancement: ${enhancementAvailable ? "ON (RNNoise)" : `OFF — ${enhancementReason}`}`
+  );
   console.log(`\n   Click "Save & Close" in the UI when done.\n`);
 
   // Auto-open browser on macOS

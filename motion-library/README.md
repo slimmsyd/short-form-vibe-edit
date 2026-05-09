@@ -12,8 +12,23 @@ Reusable b-roll motion graphics for the `short-form-vibe-edit` skill. Each templ
 | `BrowserBuilds` | building a web app, shipping product, MVP | productive |
 | `ClockProgress` | waiting, paused, anticipation, almost done | calm, deliberate |
 | `TierStack` | scope of capability, levels/tiers, scale | aspirational |
+| `KineticType` | emphatic line, payoff, mantra, punchline | bold, declarative |
+| `TerminalCommand` | code, commands, technical execution, CLI flavor | technical |
+| `SplitWipe` | hard before/after, vs, A/B, two paths | contrast |
+| `NetworkNodes` | connections, ecosystem, "everyone using it", network effects | systemic |
 
 See `catalog.json` for the structured matching rules and prop docs.
+
+## Backgrounds
+
+`shared.tsx` exports four backgrounds. Templates pick whichever fits — don't default everything to NavyGrid:
+
+- `NavyGrid` — radial navy + dot grid. Canonical / fallback.
+- `PaperGrid` — warm off-white + dotted grid. Notebook / instructional.
+- `TerminalBg` — near-black + scanlines. Code / CLI.
+- `BlueprintGrid` — deep teal + cyan grid lines. Systems / architecture / network.
+
+**Variety rule of thumb:** if 3+ scenes in a row would render `NavyGrid`, swap one for a `Paper`/`Terminal`/`Blueprint` template (e.g. `KineticType` with `bg="paper"`, `TerminalCommand`, or `NetworkNodes`). The eye reads back-to-back identical backgrounds as the whole video being one stylistic note.
 
 ## Component contract
 

@@ -8,6 +8,10 @@ import { ProblemSolution } from "./ProblemSolution";
 import { BrowserBuilds } from "./BrowserBuilds";
 import { ClockProgress } from "./ClockProgress";
 import { TierStack } from "./TierStack";
+import { KineticType } from "./KineticType";
+import { TerminalCommand } from "./TerminalCommand";
+import { SplitWipe } from "./SplitWipe";
+import { NetworkNodes } from "./NetworkNodes";
 
 export const LIBRARY: Record<string, React.FC<any>> = {
   ChartConvergence,
@@ -16,6 +20,10 @@ export const LIBRARY: Record<string, React.FC<any>> = {
   BrowserBuilds,
   ClockProgress,
   TierStack,
+  KineticType,
+  TerminalCommand,
+  SplitWipe,
+  NetworkNodes,
 };
 
 export {
@@ -25,6 +33,10 @@ export {
   BrowserBuilds,
   ClockProgress,
   TierStack,
+  KineticType,
+  TerminalCommand,
+  SplitWipe,
+  NetworkNodes,
 };
 
 export * from "./shared";

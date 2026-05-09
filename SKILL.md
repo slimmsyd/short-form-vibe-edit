@@ -112,8 +112,9 @@ This:
 - Lets the user replay any word's audio window with a ▶ button
 - Has a Find/Replace bar for common bulk fixes ("Asian" → "AI")
 - On "Save & Close": writes corrected captions back to `captions.json` (timestamps preserved; only text changes), backs up the original to `captions.json.bak`, and shuts the server down
+- Includes a **voice enhancement slider** (0–100) that wet/dry-mixes the audio through ffmpeg's `arnndn` (RNNoise) filter for cleaner verification on noisy clips. **Preview only** — does NOT modify `audio.wav`, `public/source.mp4`, or the rendered output. The slider auto-hides if `assets/rnnoise/mp.rnnn` is missing.
 
-Skip this step if the transcript already looks correct in `captions.json`. Recommend it whenever a brand-critical word might be mis-heard.
+Skip this step if the transcript already looks correct in `captions.json`. Recommend it whenever a brand-critical word might be mis-heard, or when the source clip has audible background noise.
 
 ### Step 5 — Match motion (this is YOUR job, agent)
 
